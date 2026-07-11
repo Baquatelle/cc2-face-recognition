@@ -2,21 +2,34 @@
 
 #include "ofMain.h"
 
-// M0 skeleton: verifies that openFrameworks runs and OpenCV is linked with a
-// version new enough for the face pipeline (YuNet needs >= 4.5.4). Reports
-// on screen and on the console; later milestones replace this with the real
-// detection pipeline.
+#include "FaceDetector.h"
+
+// M1: load a still image (press O for a file dialog, or drag & drop one onto
+// the window), run YuNet face detection, draw a box + landmarks per face and
+// show the face count.
+//
+// A plain <image> argument opens that image at startup (relative paths are
+// resolved against bin/data/).
+//
+// Headless modes (--selftest, --detect <image>) are handled in main() before
+// any GL window is created, so they run on a display-less machine.
 class ofApp : public ofBaseApp
 {
   public:
     void setup() override;
     void draw() override;
+    void keyPressed(int key) override;
+    void dragEvent(ofDragInfo dragInfo) override;
 
     std::vector<std::string> args; // command-line args, set by main()
 
   private:
-    std::vector<std::string> report;
-    bool allChecksPassed = false;
+    FaceDetector detector;
+    ofImage image;
+    std::string imageName;
+    std::vector<FaceDetection> faces;
+    float detectMillis = 0.0f;
+    std::string status; // message shown while no image is loaded
 
-    void runChecks();
+    bool loadImage(const std::string &path);
 };

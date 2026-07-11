@@ -1,88 +1,108 @@
 #include "ofApp.h"
 
 #include <algorithm>
-#include <cstdlib>
-
-#include <opencv2/core.hpp>
-#include <opencv2/objdetect.hpp>
 
 void ofApp::setup()
 {
-    ofSetWindowTitle("facerec — M0 skeleton");
-    runChecks();
+    ofSetWindowTitle("facerec — M1 images");
 
-    for (const auto &line : report)
-    {
-        ofLogNotice("facerec") << line;
-    }
+    std::string modelPath = ofToDataPath("models/face_detection_yunet_2023mar.onnx");
+    bool loaded = detector.setup(modelPath);
 
-    // scripts/build.py --check runs the binary with --selftest to verify the
-    // build without leaving a window open
-    bool selftest = std::find(args.begin(), args.end(), "--selftest") != args.end();
-    if (selftest)
+    status = loaded ? "Press O to open an image, or drag & drop one onto the window."
+                    : "FAILED to load the YuNet model — run scripts/bootstrap.py first.";
+
+    // a plain (non-flag) argument is an image to open at startup
+    for (const auto &arg : args)
     {
-        std::exit(allChecksPassed ? 0 : 1);
+        if (!arg.empty() && arg[0] != '-')
+        {
+            loadImage(ofToDataPath(arg));
+            break;
+        }
     }
 }
 
-void ofApp::runChecks()
+bool ofApp::loadImage(const std::string &path)
 {
-    allChecksPassed = true;
-    auto check = [this](bool ok, const std::string &what) {
-        report.push_back(std::string(ok ? "[ok]   " : "[FAIL] ") + what);
-        if (!ok)
-            allChecksPassed = false;
-    };
-
-    report.push_back("openFrameworks " + ofGetVersionInfo());
-    report.push_back("OpenCV " + cv::getVersionString());
-
-    int cvVersion = CV_VERSION_MAJOR * 10000 + CV_VERSION_MINOR * 100 + CV_VERSION_REVISION;
-    check(cvVersion >= 40504, "OpenCV >= 4.5.4 (required by YuNet)");
-
-    std::string yunetPath = ofToDataPath("models/face_detection_yunet_2023mar.onnx");
-    std::string sfacePath = ofToDataPath("models/face_recognition_sface_2021dec.onnx");
-    bool yunetFound = ofFile::doesFileExist(yunetPath);
-    bool sfaceFound = ofFile::doesFileExist(sfacePath);
-    check(yunetFound, "YuNet model file in data/models (fetched by bootstrap.py)");
-    check(sfaceFound, "SFace model file in data/models (fetched by bootstrap.py)");
-
-    if (yunetFound)
+    ofImage next;
+    if (!next.load(path))
     {
-        try
-        {
-            auto detector = cv::FaceDetectorYN::create(yunetPath, "", cv::Size(320, 320));
-            check(detector != nullptr, "cv::FaceDetectorYN loads the YuNet model");
-        }
-        catch (const cv::Exception &e)
-        {
-            check(false, std::string("cv::FaceDetectorYN loads the YuNet model — ") + e.what());
-        }
+        status = "Could not load image: " + path;
+        return false;
     }
-    if (sfaceFound)
-    {
-        try
-        {
-            auto recognizer = cv::FaceRecognizerSF::create(sfacePath, "");
-            check(recognizer != nullptr, "cv::FaceRecognizerSF loads the SFace model");
-        }
-        catch (const cv::Exception &e)
-        {
-            check(false, std::string("cv::FaceRecognizerSF loads the SFace model — ") + e.what());
-        }
-    }
+    image = next;
+    imageName = ofFilePath::getFileName(path);
 
-    report.push_back(allChecksPassed ? "M0 checks passed" : "M0 checks FAILED");
+    // detectInPixels() normalizes gray/alpha to RGB and converts to BGR itself.
+    uint64_t start = ofGetElapsedTimeMicros();
+    faces = detectInPixels(detector, image.getPixels());
+    detectMillis = (ofGetElapsedTimeMicros() - start) / 1000.0f;
+
+    ofLogNotice("facerec") << imageName << ": " << faces.size() << " face(s) in " << detectMillis << " ms";
+    return true;
 }
 
 void ofApp::draw()
 {
-    ofBackground(allChecksPassed ? ofColor(20, 60, 30) : ofColor(70, 25, 25));
-    ofSetColor(255);
-    float y = 40;
-    for (const auto &line : report)
+    ofBackground(24);
+
+    if (!image.isAllocated())
     {
-        ofDrawBitmapString(line, 30, y);
-        y += 20;
+        ofSetColor(255);
+        ofDrawBitmapString(status, 30, 40);
+        return;
+    }
+
+    // fit the image into the window, letterboxed
+    float scale = std::min(ofGetWidth() / image.getWidth(), ofGetHeight() / image.getHeight());
+    float offsetX = (ofGetWidth() - image.getWidth() * scale) / 2;
+    float offsetY = (ofGetHeight() - image.getHeight() * scale) / 2;
+
+    ofSetColor(255);
+    image.draw(offsetX, offsetY, image.getWidth() * scale, image.getHeight() * scale);
+
+    for (const auto &face : faces)
+    {
+        float x = offsetX + face.box.x * scale;
+        float y = offsetY + face.box.y * scale;
+
+        ofPushStyle();
+        ofNoFill();
+        ofSetLineWidth(2);
+        ofSetColor(80, 255, 120);
+        ofDrawRectangle(x, y, face.box.width * scale, face.box.height * scale);
+        ofFill();
+        for (const auto &lm : face.landmarks)
+        {
+            ofDrawCircle(offsetX + lm.x * scale, offsetY + lm.y * scale, 3);
+        }
+        ofPopStyle();
+
+        ofDrawBitmapStringHighlight(ofToString(face.confidence, 2), x, y - 6);
+    }
+
+    ofDrawBitmapStringHighlight("Faces: " + ofToString(faces.size()), 20, ofGetHeight() - 44);
+    ofDrawBitmapStringHighlight(imageName + "  (" + ofToString(detectMillis, 1) + " ms, O = open another image)", 20,
+                                ofGetHeight() - 20);
+}
+
+void ofApp::keyPressed(int key)
+{
+    if (key == 'o' || key == 'O')
+    {
+        auto result = ofSystemLoadDialog("Choose an image");
+        if (result.bSuccess)
+        {
+            loadImage(result.getPath());
+        }
+    }
+}
+
+void ofApp::dragEvent(ofDragInfo dragInfo)
+{
+    if (!dragInfo.files.empty())
+    {
+        loadImage(dragInfo.files.front());
     }
 }
