@@ -9,8 +9,9 @@ Steps:
   2. Clone the ofxCv addon into of/addons/
   3. Verify the OpenCV bundled with ofxOpenCv is >= 4.5.4 (YuNet requirement)
   4. Download the YuNet + SFace ONNX models into facerec/bin/data/models/
-  5. Run the openFrameworks projectGenerator for the current platform
-  6. macOS: add the camera-permission key to the generated Info.plist
+  5. Download sample test images into facerec/bin/data/samples/
+  6. Run the openFrameworks projectGenerator for the current platform
+  7. macOS: add the camera-permission key to the generated Info.plist
 
 Platforms: macOS (Xcode) and Windows (msys2/mingw64, run from an MSYS2 shell
 or plain Python — only downloads and the projectGenerator run here).
@@ -51,6 +52,21 @@ MODELS = {
     "face_recognition_sface_2021dec.onnx": {
         "url": f"{MODEL_BASE}/face_recognition_sface/face_recognition_sface_2021dec.onnx",
         "sha256": "0ba9fbfa01b5270c96627c4ef784da859931e02f04419c829e83484087c34e79",
+    },
+}
+
+SAMPLES_DIR = APP_DIR / "bin" / "data" / "samples"
+SAMPLES = {
+    # single clear face, color
+    "messi5.jpg": {
+        "url": "https://raw.githubusercontent.com/opencv/opencv/4.x/samples/data/messi5.jpg",
+        "sha256": "1d570e49654e84c7a943918537bd9e5e1ef82920152e147c834006e235be97c9",
+    },
+    # group photo with several faces, grayscale PGM (exercises the
+    # gray -> RGB normalization in the pipeline)
+    "group.pgm": {
+        "url": "https://raw.githubusercontent.com/opencv/opencv_extra/4.x/testdata/gpu/haarcascade/group_1_640x480_VGA.pgm",
+        "sha256": "3191aafc7141ebc4997bed3a4abcecce463f0990812dbd93855f26eea3012b2a",
     },
 }
 
@@ -166,18 +182,26 @@ def check_bundled_opencv():
 
 
 def ensure_models():
-    MODELS_DIR.mkdir(parents=True, exist_ok=True)
-    for name, spec in MODELS.items():
-        dest = MODELS_DIR / name
+    ensure_verified_downloads(MODELS_DIR, MODELS, "model")
+
+
+def ensure_samples():
+    ensure_verified_downloads(SAMPLES_DIR, SAMPLES, "sample")
+
+
+def ensure_verified_downloads(dest_dir, specs, kind):
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    for name, spec in specs.items():
+        dest = dest_dir / name
         if dest.exists() and sha256sum(dest) == spec["sha256"]:
-            log(f"model {name} already present")
+            log(f"{kind} {name} already present")
             continue
         download(spec["url"], dest)
         digest = sha256sum(dest)
         if digest != spec["sha256"]:
             dest.unlink()
             die(f"checksum mismatch for {name}: got {digest}")
-        log(f"model {name} verified")
+        log(f"{kind} {name} verified")
 
 
 def find_project_generator(plat):
@@ -233,6 +257,7 @@ def main():
     ensure_ofxcv()
     check_bundled_opencv()
     ensure_models()
+    ensure_samples()
     run_project_generator(plat)
     if plat == "darwin":
         patch_info_plist()
