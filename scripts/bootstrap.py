@@ -96,6 +96,13 @@ def platform_key():
     die(f"unsupported platform: {sys.platform} (macOS and Windows only)")
 
 
+# Some hosts (Wikimedia) reject urllib's default "Python-urllib" user agent
+# with 403; identify ourselves instead.
+_opener = urllib.request.build_opener()
+_opener.addheaders = [("User-Agent", "facerec-bootstrap/1.0 (university course project)")]
+urllib.request.install_opener(_opener)
+
+
 def download(url, dest: Path, label=None):
     """Download url to dest atomically, with a crude progress indicator."""
     label = label or dest.name
