@@ -10,8 +10,9 @@ Steps:
   3. Verify the OpenCV bundled with ofxOpenCv is >= 4.5.4 (YuNet requirement)
   4. Download the YuNet + SFace ONNX models into facerec/bin/data/models/
   5. Download sample test images into facerec/bin/data/samples/
-  6. Run the openFrameworks projectGenerator for the current platform
-  7. macOS: add the camera-permission key to the generated Info.plist
+  6. Download the example gallery (person photos) into facerec/bin/data/gallery/
+  7. Run the openFrameworks projectGenerator for the current platform
+  8. macOS: add the camera-permission key to the generated Info.plist
 
 Platforms: macOS (Xcode) and Windows (msys2/mingw64, run from an MSYS2 shell
 or plain Python — only downloads and the projectGenerator run here).
@@ -73,6 +74,30 @@ SAMPLES = {
     "face-walking.mp4": {
         "url": "https://github.com/intel-iot-devkit/sample-videos/raw/master/face-demographics-walking-and-pause.mp4",
         "sha256": "d88ab9aa03634f66f8815db3dc940e1cdd80b098440effb20882e814fd206bf5",
+    },
+    # different photos of the gallery people (Wikimedia Commons) — recognition
+    # tests match these against the gallery cross-photo, not same-file
+    "messi-worldcup.jpg": {
+        "url": "https://upload.wikimedia.org/wikipedia/commons/b/b4/Lionel-Messi-Argentina-2022-FIFA-World-Cup_%28cropped%29.jpg",
+        "sha256": "6330c7154eb3a3c3ecbc32c7ed30356ec5661c8ad2687a739d23eddd8a9076d6",
+    },
+    "ronaldo-worldcup.jpg": {
+        "url": "https://upload.wikimedia.org/wikipedia/commons/8/8b/Cristiano_Ronaldo_WC2022_-_01_%28cropped%29.jpg",
+        "sha256": "78c4f5f56c24c701ae177669e66d8ef540e2aa584a458ed477abb2a7c91e8bd6",
+    },
+}
+
+# M3 example gallery: one subfolder per person under bin/data/gallery/, loaded
+# into SFace embeddings at app startup (Wikimedia Commons portraits)
+GALLERY_DIR = APP_DIR / "bin" / "data" / "gallery"
+GALLERY = {
+    "messi/messi-2018.jpg": {
+        "url": "https://upload.wikimedia.org/wikipedia/commons/c/c1/Lionel_Messi_20180626.jpg",
+        "sha256": "6ab70c051dd3a46da69e1c33eb275504c6f386841717f0b6bd9b1946804363f0",
+    },
+    "ronaldo/ronaldo-2018.jpg": {
+        "url": "https://upload.wikimedia.org/wikipedia/commons/8/8c/Cristiano_Ronaldo_2018.jpg",
+        "sha256": "5e0eb8786ebac6b55c91f2ca9819283ed4bc012bfb83d657642a1b988ae0ffb0",
     },
 }
 
@@ -202,6 +227,10 @@ def ensure_samples():
     ensure_verified_downloads(SAMPLES_DIR, SAMPLES, "sample")
 
 
+def ensure_gallery():
+    ensure_verified_downloads(GALLERY_DIR, GALLERY, "gallery photo")
+
+
 def ensure_verified_downloads(dest_dir, specs, kind):
     dest_dir.mkdir(parents=True, exist_ok=True)
     for name, spec in specs.items():
@@ -271,6 +300,7 @@ def main():
     check_bundled_opencv()
     ensure_models()
     ensure_samples()
+    ensure_gallery()
     run_project_generator(plat)
     if plat == "darwin":
         patch_info_plist()
