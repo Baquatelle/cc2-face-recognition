@@ -1,6 +1,7 @@
 #include "ofApp.h"
 
 #include <algorithm>
+#include <utility>
 
 namespace
 {
@@ -87,12 +88,14 @@ bool ofApp::loadImage(const std::string &path)
 
 bool ofApp::loadVideo(const std::string &path)
 {
-    stopCurrentSource();
-    if (!video.load(path))
+    ofVideoPlayer next;
+    if (!next.load(path))
     {
         status = "Could not load video: " + path;
         return false;
     }
+    stopCurrentSource();
+    video = std::move(next);
     video.setLoopState(OF_LOOP_NORMAL);
     video.play();
     mode = InputMode::Video;
@@ -165,7 +168,13 @@ void ofApp::draw()
     if (srcW <= 0 || srcH <= 0)
     {
         ofSetColor(255);
-        ofDrawBitmapString(status, 30, 40);
+        // A video that load()ed but isn't yet producing frames (or failed
+        // asynchronously in the backend) lands here; show a source-specific
+        // message rather than the generic startup text.
+        std::string message = (mode == InputMode::Video) ? "Loading video " + sourceName +
+                                                               " ... (if this persists, the file may be unplayable)"
+                                                         : status;
+        ofDrawBitmapString(message, 30, 40);
         gui.draw();
         return;
     }
