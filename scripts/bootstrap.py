@@ -68,6 +68,12 @@ SAMPLES = {
         "url": "https://raw.githubusercontent.com/opencv/opencv_extra/4.x/testdata/gpu/haarcascade/group_1_640x480_VGA.pgm",
         "sha256": "3191aafc7141ebc4997bed3a4abcecce463f0990812dbd93855f26eea3012b2a",
     },
+    # ~90 s clip of people walking toward the camera (Intel sample-videos,
+    # CC-BY-4.0) — the M2 video-file demo
+    "face-walking.mp4": {
+        "url": "https://github.com/intel-iot-devkit/sample-videos/raw/master/face-demographics-walking-and-pause.mp4",
+        "sha256": "d88ab9aa03634f66f8815db3dc940e1cdd80b098440effb20882e814fd206bf5",
+    },
 }
 
 MIN_OPENCV = (4, 5, 4)
