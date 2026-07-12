@@ -43,8 +43,11 @@ class FaceDetector
     static constexpr int maxInferenceSide = 1280;
 };
 
-// Normalize openFrameworks pixels (any type) to BGR and run detection. Keeps
-// the gray/alpha -> RGB -> BGR conversion in one place so the interactive and
-// headless (--detect) paths can't drift apart. Takes pixels by value because
+// Normalize openFrameworks pixels (any type: gray/alpha/RGB) to an 8-bit BGR
+// Mat, OpenCV's native layout. One place for the conversion so the interactive
+// and headless paths can't drift apart. Takes pixels by value because
 // setImageType() mutates.
+cv::Mat toBgr(ofPixels pixels);
+
+// Convenience: toBgr() + detect(), for callers that only need detection.
 std::vector<FaceDetection> detectInPixels(FaceDetector &detector, ofPixels pixels);

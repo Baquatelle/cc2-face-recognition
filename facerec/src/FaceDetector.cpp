@@ -66,10 +66,15 @@ std::vector<FaceDetection> FaceDetector::detect(const cv::Mat &bgr)
     return result;
 }
 
-std::vector<FaceDetection> detectInPixels(FaceDetector &detector, ofPixels pixels)
+cv::Mat toBgr(ofPixels pixels)
 {
     pixels.setImageType(OF_IMAGE_COLOR); // normalize gray/alpha to 8-bit RGB
     cv::Mat bgr;
     cv::cvtColor(ofxCv::toCv(pixels), bgr, cv::COLOR_RGB2BGR);
-    return detector.detect(bgr);
+    return bgr;
+}
+
+std::vector<FaceDetection> detectInPixels(FaceDetector &detector, ofPixels pixels)
+{
+    return detector.detect(toBgr(std::move(pixels)));
 }
