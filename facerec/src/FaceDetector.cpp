@@ -79,3 +79,22 @@ std::vector<FaceDetection> detectInPixels(FaceDetector &detector, ofPixels pixel
 {
     return detector.detect(toBgr(std::move(pixels)));
 }
+
+cv::Mat faceDetectionToYunetRow(const FaceDetection &face)
+{
+    // inverse of the decoding in detect(): x, y, w, h, five landmark (x, y)
+    // pairs, score
+    cv::Mat row(1, kYunetRowSize, CV_32F);
+    float *f = row.ptr<float>(0);
+    f[kBoxXIndex] = face.box.x;
+    f[kBoxYIndex] = face.box.y;
+    f[kBoxWidthIndex] = face.box.width;
+    f[kBoxHeightIndex] = face.box.height;
+    for (int k = 0; k < kNumLandmarks; k++)
+    {
+        f[kLandmarkOffset + 2 * k] = face.landmarks[k].x;
+        f[kLandmarkOffset + 2 * k + 1] = face.landmarks[k].y;
+    }
+    f[kConfidenceIndex] = face.confidence;
+    return row;
+}

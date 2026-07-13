@@ -20,20 +20,8 @@ bool FaceRecognizer::setup(const std::string &modelPath)
 
 cv::Mat FaceRecognizer::embed(const cv::Mat &bgr, const FaceDetection &face)
 {
-    // rebuild the YuNet output row alignCrop() expects:
-    // x, y, w, h, five landmark (x, y) pairs, score
-    cv::Mat row(1, 15, CV_32F);
-    float *f = row.ptr<float>(0);
-    f[0] = face.box.x;
-    f[1] = face.box.y;
-    f[2] = face.box.width;
-    f[3] = face.box.height;
-    for (int k = 0; k < 5; k++)
-    {
-        f[4 + 2 * k] = face.landmarks[k].x;
-        f[5 + 2 * k] = face.landmarks[k].y;
-    }
-    f[14] = face.confidence;
+    // rebuild the YuNet output row alignCrop() expects
+    cv::Mat row = faceDetectionToYunetRow(face);
 
     try
     {

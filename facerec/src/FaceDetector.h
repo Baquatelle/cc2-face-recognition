@@ -63,3 +63,9 @@ cv::Mat toBgr(ofPixels pixels);
 
 // Convenience: toBgr() + detect(), for callers that only need detection.
 std::vector<FaceDetection> detectInPixels(FaceDetector &detector, ofPixels pixels);
+
+// Encode a FaceDetection back into the single-row YuNet layout
+// (kYunetRowSize CV_32F columns) that cv::FaceRecognizerSF::alignCrop()
+// expects. The inverse of what detect() decodes; kept here so the row layout
+// lives in exactly one place.
+cv::Mat faceDetectionToYunetRow(const FaceDetection &face);
