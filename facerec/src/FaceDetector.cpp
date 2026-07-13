@@ -55,12 +55,13 @@ std::vector<FaceDetection> FaceDetector::detect(const cv::Mat &bgr)
     {
         const float *f = faces.ptr<float>(i);
         FaceDetection d;
-        d.box = ofRectangle(f[0] * scale, f[1] * scale, f[2] * scale, f[3] * scale);
-        for (int k = 0; k < 5; k++)
+        d.box = ofRectangle(f[kBoxXIndex] * scale, f[kBoxYIndex] * scale, f[kBoxWidthIndex] * scale,
+                            f[kBoxHeightIndex] * scale);
+        for (int k = 0; k < kNumLandmarks; k++)
         {
-            d.landmarks[k] = {f[4 + 2 * k] * scale, f[5 + 2 * k] * scale};
+            d.landmarks[k] = {f[kLandmarkOffset + 2 * k] * scale, f[kLandmarkOffset + 2 * k + 1] * scale};
         }
-        d.confidence = f[14];
+        d.confidence = f[kConfidenceIndex];
         result.push_back(d);
     }
     return result;

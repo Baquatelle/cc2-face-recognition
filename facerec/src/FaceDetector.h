@@ -9,12 +9,24 @@
 
 #include "ofMain.h"
 
+// YuNet emits one row per face as a flat float array laid out as
+// [x, y, w, h, (landmark x, y) x kNumLandmarks, score] = kYunetRowSize columns.
+// These names are the single source of truth for that layout.
+inline constexpr int kNumLandmarks = 5;
+inline constexpr int kBoxXIndex = 0;
+inline constexpr int kBoxYIndex = 1;
+inline constexpr int kBoxWidthIndex = 2;
+inline constexpr int kBoxHeightIndex = 3;
+inline constexpr int kLandmarkOffset = 4;                                     // index of the first landmark x
+inline constexpr int kYunetRowSize = kLandmarkOffset + 2 * kNumLandmarks + 1; // 15
+inline constexpr int kConfidenceIndex = kYunetRowSize - 1;                    // 14
+
 // One detected face, in pixel coordinates of the image passed to detect().
 struct FaceDetection
 {
     ofRectangle box;
     // YuNet order: right eye, left eye, nose tip, right/left mouth corner
-    std::array<glm::vec2, 5> landmarks;
+    std::array<glm::vec2, kNumLandmarks> landmarks;
     float confidence = 0.0f;
 };
 
