@@ -1,6 +1,7 @@
 #include "ofMain.h"
 #include "ofApp.h"
 #include "FaceDetector.h"
+#include "FaceRecognizer.h"
 
 #include <algorithm>
 #include <cstdio>
@@ -81,6 +82,55 @@ int runHeadlessDetect(const std::string &path)
     return 0;
 }
 
+// Detect + recognize faces in one image against the data/gallery folder,
+// print name/score per face, and exit. `name` applies the default match
+// threshold; `best`/`score` always show the closest gallery person, so
+// threshold tuning can be done from the raw output.
+int runHeadlessIdentify(const std::string &path)
+{
+    FaceDetector detector;
+    if (!detector.setup(ofToDataPath(kYunetModel)))
+    {
+        std::fprintf(stderr, "could not load the YuNet model — run scripts/bootstrap.py first\n");
+        return 1;
+    }
+    FaceRecognizer recognizer;
+    if (!recognizer.setup(ofToDataPath(kSfaceModel)))
+    {
+        std::fprintf(stderr, "could not load the SFace model — run scripts/bootstrap.py first\n");
+        return 1;
+    }
+    if (recognizer.loadGallery(ofToDataPath("gallery"), detector) == 0)
+    {
+        std::fprintf(stderr, "no usable gallery at data/gallery — run scripts/bootstrap.py first\n");
+        return 1;
+    }
+
+    ofPixels pixels;
+    if (!ofLoadImage(pixels, ofToDataPath(path)))
+    {
+        std::fprintf(stderr, "could not load image: %s\n", path.c_str());
+        return 1;
+    }
+
+    cv::Mat bgr = toBgr(std::move(pixels));
+    auto detections = detector.detect(bgr);
+    auto matches = recognizer.identify(bgr, detections);
+    std::printf("gallery: %d person(s)\n", recognizer.personCount());
+    std::printf("faces: %zu\n", detections.size());
+    for (size_t i = 0; i < detections.size(); i++)
+    {
+        const auto &d = detections[i];
+        const auto &m = matches[i];
+        bool recognized = m.score >= FaceRecognizer::kDefaultMatchThreshold;
+        std::string score = m.score < 0 ? "n/a" : ofToString(m.score, 2);
+        std::printf("face %zu: name=%s best=%s score=%s x=%.0f y=%.0f w=%.0f h=%.0f\n", i,
+                    recognized ? m.name.c_str() : "unknown", m.name.empty() ? "-" : m.name.c_str(), score.c_str(),
+                    d.box.x, d.box.y, d.box.width, d.box.height);
+    }
+    return 0;
+}
+
 } // namespace
 
 int main(int argc, char **argv)
@@ -97,16 +147,20 @@ int main(int argc, char **argv)
     {
         return runSelftest();
     }
-    auto detectIt = std::find(args.begin(), args.end(), "--detect");
-    if (detectIt != args.end())
+    for (auto [flag, run] : {std::pair{"--detect", runHeadlessDetect}, std::pair{"--identify", runHeadlessIdentify}})
     {
-        auto imageIt = std::next(detectIt);
+        auto flagIt = std::find(args.begin(), args.end(), flag);
+        if (flagIt == args.end())
+        {
+            continue;
+        }
+        auto imageIt = std::next(flagIt);
         if (imageIt == args.end() || (!imageIt->empty() && (*imageIt)[0] == '-'))
         {
-            std::fprintf(stderr, "usage: facerec --detect <image>\n");
+            std::fprintf(stderr, "usage: facerec %s <image>\n", flag);
             return 1;
         }
-        return runHeadlessDetect(*imageIt);
+        return run(*imageIt);
     }
 
     ofGLWindowSettings settings;
