@@ -149,6 +149,15 @@ void ofApp::update()
     }
 }
 
+void ofApp::refreshStillImage()
+{
+    if (hasStillImage())
+    {
+        detectMillis = 0.0f;
+        detectFrame(image.getPixels());
+    }
+}
+
 void ofApp::detectFrame(const ofPixels &pixels)
 {
     uint64_t start = ofGetElapsedTimeMicros();
@@ -165,7 +174,7 @@ void ofApp::draw()
     ofBackground(24);
 
     float srcW = 0, srcH = 0;
-    if (mode == InputMode::Image && image.isAllocated())
+    if (hasStillImage())
     {
         srcW = image.getWidth();
         srcH = image.getHeight();
@@ -319,11 +328,7 @@ void ofApp::loadGallery(const std::string &path)
 {
     recognizer.loadGallery(path, detector);
     // a still image keeps its overlays until re-detected, so refresh them
-    if (mode == InputMode::Image && image.isAllocated())
-    {
-        detectMillis = 0.0f;
-        detectFrame(image.getPixels());
-    }
+    refreshStillImage();
 }
 
 void ofApp::onLoadGallery()
@@ -364,9 +369,5 @@ void ofApp::onScoreThreshold(float &value)
     detector.setScoreThreshold(value);
     // video/webcam pick the new threshold up on their next frame; a still
     // image has to be re-detected explicitly
-    if (mode == InputMode::Image && image.isAllocated())
-    {
-        detectMillis = 0.0f;
-        detectFrame(image.getPixels());
-    }
+    refreshStillImage();
 }

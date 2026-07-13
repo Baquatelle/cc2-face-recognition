@@ -72,6 +72,14 @@ class ofApp : public ofBaseApp
     void detectFrame(const ofPixels &pixels);
     void loadGallery(const std::string &path);
 
+    // a still image keeps its overlays until re-detected; these let the
+    // image path be recognized and refreshed in one place
+    bool hasStillImage() const
+    {
+        return mode == InputMode::Image && image.isAllocated();
+    }
+    void refreshStillImage();
+
     void onOpenImage();
     void onOpenVideo();
     void onLoadGallery();
