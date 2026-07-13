@@ -18,7 +18,7 @@ bool isVideoPath(const std::string &path)
 
 void ofApp::setup()
 {
-    ofSetWindowTitle("facerec — M2 video");
+    ofSetWindowTitle("facerec — M3 recognition");
 
     std::string modelPath = ofToDataPath("models/face_detection_yunet_2023mar.onnx");
     bool loaded = detector.setup(modelPath, scoreThreshold);
@@ -26,13 +26,26 @@ void ofApp::setup()
     status = loaded ? "Open an image or video (O key, drag & drop, or the panel), or turn on the webcam."
                     : "FAILED to load the YuNet model — run scripts/bootstrap.py first.";
 
+    if (!recognizer.setup(ofToDataPath("models/face_recognition_sface_2021dec.onnx")))
+    {
+        ofLogError("facerec") << "SFace model missing — recognition disabled, "
+                                 "run scripts/bootstrap.py first";
+    }
+    else
+    {
+        recognizer.loadGallery(ofToDataPath("gallery"), detector);
+    }
+
     gui.setup("facerec");
     gui.add(openImageButton.setup("open image..."));
     gui.add(openVideoButton.setup("open video..."));
     gui.add(webcamOn);
     gui.add(scoreThreshold);
+    gui.add(matchThreshold);
+    gui.add(loadGalleryButton.setup("load gallery..."));
     openImageButton.addListener(this, &ofApp::onOpenImage);
     openVideoButton.addListener(this, &ofApp::onOpenVideo);
+    loadGalleryButton.addListener(this, &ofApp::onLoadGallery);
     webcamOn.addListener(this, &ofApp::onWebcamToggle);
     scoreThreshold.addListener(this, &ofApp::onScoreThreshold);
 
@@ -65,6 +78,7 @@ void ofApp::stopCurrentSource()
     }
     mode = InputMode::None;
     faces.clear();
+    matches.clear();
     detectMillis = 0.0f;
 }
 
@@ -130,7 +144,7 @@ void ofApp::update()
         {
             lastLogMillis = now;
             ofLogNotice("facerec") << sourceName << ": " << faces.size() << " face(s), " << ofToString(detectMillis, 1)
-                                   << " ms/detect, " << ofToString(ofGetFrameRate(), 0) << " fps";
+                                   << " ms/frame, " << ofToString(ofGetFrameRate(), 0) << " fps";
         }
     }
 }
@@ -138,7 +152,9 @@ void ofApp::update()
 void ofApp::detectFrame(const ofPixels &pixels)
 {
     uint64_t start = ofGetElapsedTimeMicros();
-    faces = detectInPixels(detector, pixels);
+    cv::Mat bgr = toBgr(pixels);
+    faces = detector.detect(bgr);
+    matches = recognizer.hasGallery() ? recognizer.identify(bgr, faces) : std::vector<FaceMatch>();
     float millis = (ofGetElapsedTimeMicros() - start) / 1000.0f;
     // smooth the readout across frames; first measurement is taken as-is
     detectMillis = detectMillis == 0.0f ? millis : ofLerp(detectMillis, millis, 0.15f);
@@ -198,15 +214,28 @@ void ofApp::draw()
         grabber.draw(offsetX, offsetY, srcW * scale, srcH * scale);
     }
 
-    for (const auto &face : faces)
+    for (size_t i = 0; i < faces.size(); i++)
     {
+        const auto &face = faces[i];
         float x = offsetX + face.box.x * scale;
         float y = offsetY + face.box.y * scale;
+
+        // the match threshold is applied here, at draw time: identify()
+        // always reports the closest gallery person, and the slider only
+        // decides whether that counts as a match or "unknown"
+        bool recognized = i < matches.size() && matches[i].score >= matchThreshold;
 
         ofPushStyle();
         ofNoFill();
         ofSetLineWidth(2);
-        ofSetColor(80, 255, 120);
+        if (recognized)
+        {
+            ofSetColor(80, 180, 255);
+        }
+        else
+        {
+            ofSetColor(80, 255, 120);
+        }
         ofDrawRectangle(x, y, face.box.width * scale, face.box.height * scale);
         ofFill();
         for (const auto &lm : face.landmarks)
@@ -215,16 +244,25 @@ void ofApp::draw()
         }
         ofPopStyle();
 
-        ofDrawBitmapStringHighlight(ofToString(face.confidence, 2), x, y - 6);
+        std::string label = ofToString(face.confidence, 2);
+        if (i < matches.size())
+        {
+            // score < 0 means no embedding for this face — show "unknown"
+            // with no number (recognized is false, so name is "unknown")
+            std::string name = recognized ? matches[i].name : "unknown";
+            label = matches[i].score < 0 ? name : name + " " + ofToString(matches[i].score, 2);
+        }
+        ofDrawBitmapStringHighlight(label, x, y - 6);
     }
 
     ofDrawBitmapStringHighlight("Faces: " + ofToString(faces.size()), 20, ofGetHeight() - 44);
 
-    std::string info = sourceName + "  (" + ofToString(detectMillis, 1) + " ms/detect";
+    std::string info = sourceName + "  (" + ofToString(detectMillis, 1) + " ms/frame";
     if (mode != InputMode::Image)
     {
         info += ", " + ofToString(ofGetFrameRate(), 0) + " fps";
     }
+    info += recognizer.hasGallery() ? ", gallery: " + ofToString(recognizer.personCount()) + " people" : ", no gallery";
     if (mode == InputMode::Video)
     {
         info += video.isPaused() ? ", paused — space resumes" : ", space pauses";
@@ -274,6 +312,26 @@ void ofApp::onOpenVideo()
     if (result.bSuccess)
     {
         loadVideo(result.getPath());
+    }
+}
+
+void ofApp::loadGallery(const std::string &path)
+{
+    recognizer.loadGallery(path, detector);
+    // a still image keeps its overlays until re-detected, so refresh them
+    if (mode == InputMode::Image && image.isAllocated())
+    {
+        detectMillis = 0.0f;
+        detectFrame(image.getPixels());
+    }
+}
+
+void ofApp::onLoadGallery()
+{
+    auto result = ofSystemLoadDialog("Choose a gallery folder (one subfolder per person)", true /* folder selection */);
+    if (result.bSuccess)
+    {
+        loadGallery(result.getPath());
     }
 }
 
