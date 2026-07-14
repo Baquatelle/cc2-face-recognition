@@ -169,26 +169,28 @@ void ofApp::detectFrame(const ofPixels &pixels)
     detectMillis = detectMillis == 0.0f ? millis : ofLerp(detectMillis, millis, 0.15f);
 }
 
+std::pair<float, float> ofApp::sourceSize() const
+{
+    if (hasStillImage())
+    {
+        return {image.getWidth(), image.getHeight()};
+    }
+    else if (mode == InputMode::Video && video.isLoaded())
+    {
+        return {video.getWidth(), video.getHeight()};
+    }
+    else if (mode == InputMode::Webcam && grabber.isInitialized())
+    {
+        return {grabber.getWidth(), grabber.getHeight()};
+    }
+    return {0, 0};
+}
+
 void ofApp::draw()
 {
     ofBackground(24);
 
-    float srcW = 0, srcH = 0;
-    if (hasStillImage())
-    {
-        srcW = image.getWidth();
-        srcH = image.getHeight();
-    }
-    else if (mode == InputMode::Video && video.isLoaded())
-    {
-        srcW = video.getWidth();
-        srcH = video.getHeight();
-    }
-    else if (mode == InputMode::Webcam && grabber.isInitialized())
-    {
-        srcW = grabber.getWidth();
-        srcH = grabber.getHeight();
-    }
+    auto [srcW, srcH] = sourceSize();
 
     if (srcW <= 0 || srcH <= 0)
     {

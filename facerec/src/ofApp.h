@@ -1,5 +1,7 @@
 #pragma once
 
+#include <utility>
+
 #include "ofMain.h"
 #include "ofxGui.h"
 
@@ -79,6 +81,9 @@ class ofApp : public ofBaseApp
         return mode == InputMode::Image && image.isAllocated();
     }
     void refreshStillImage();
+
+    // pixel size of the active source, or {0, 0} when none is producing frames
+    std::pair<float, float> sourceSize() const;
 
     void onOpenImage();
     void onOpenVideo();
