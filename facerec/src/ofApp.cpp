@@ -664,7 +664,7 @@ void ofApp::dragEvent(ofDragInfo dragInfo)
     if (!dragInfo.files.empty())
     {
         ofLogNotice("facerec") << "dragged path " << dragInfo.files.front();
-        openPath(dragInfo.files.front());
+        openPath(dragInfo.files.front().string());
     }
 }
 
