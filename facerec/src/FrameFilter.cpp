@@ -1,5 +1,7 @@
 #include "FrameFilter.h"
 
+using namespace std;
+
 // ---- FrameFilter - Modar Issa ----
 // Four display modes for the frame before it gets drawn.
 // Detection and recognition still work on the original frame so nothing

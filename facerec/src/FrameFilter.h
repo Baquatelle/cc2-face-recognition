@@ -4,8 +4,6 @@
 #include <string>
 #include <vector>
 
-using namespace std;
-
 // FrameFilter - Modar Issa
 // Adds a few display modes for the frame before it gets drawn on screen.
 // The face detection still runs on the normal frame underneath, this only
@@ -25,7 +23,7 @@ using namespace std;
 //
 //    if (frameFilter.getMode() != FilterMode::NORMAL && !lastFrameBgr.empty()) {
 //        // Abel's faces use ofRectangle .box, FrameFilter wants cv::Rect
-//        vector<cv::Rect> faceRects;
+//        std::vector<cv::Rect> faceRects;
 //        for (int i = 0; i < faces.size(); i++) {
 //            cv::Rect r;
 //            r.x = (int)faces[i].box.x;
@@ -70,14 +68,14 @@ public:
     // the main one - gives back the filtered frame
     // frame is BGR from the webcam or video, faceRects comes from the detector
     // the frame that comes back is always BGR and the same size as the one going in
-    cv::Mat apply(const cv::Mat& frame, vector<cv::Rect> faceRects);
+    cv::Mat apply(const cv::Mat& frame, std::vector<cv::Rect> faceRects);
 
     // NORMAL -> GREYSCALE -> EDGES -> FACE_CROP -> back to NORMAL
     void nextMode();
 
     void setMode(FilterMode m);
     FilterMode getMode();
-    string getModeName();
+    std::string getModeName();
 
     // canny thresholds, change these if the edges come out too messy or too empty
     int cannyLow = 50;
@@ -88,5 +86,5 @@ private:
 
     cv::Mat applyGreyscale(const cv::Mat& frame);
     cv::Mat applyEdges(const cv::Mat& frame);
-    cv::Mat applyFaceCrop(const cv::Mat& frame, vector<cv::Rect> faceRects);
+    cv::Mat applyFaceCrop(const cv::Mat& frame, std::vector<cv::Rect> faceRects);
 };
