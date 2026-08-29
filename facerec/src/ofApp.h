@@ -14,6 +14,7 @@
 #include "recognition/FaceRecognizer.h"
 #include "tracking/FaceTracker.h"
 #include "liveness/LivenessDetector.h"
+#include "FrameFilter.h"
 
 /**
  * @brief Interactive face recognition application.
@@ -94,6 +95,8 @@ class ofApp : public ofBaseApp
     float detectMillis = 0.0f;                        //< Time taken for the last detection in milliseconds.
     uint64_t lastLogMillis = 0;                       //< Timestamp of the last log message.
     std::string status;                               //< Current status message.
+    FrameFilter frameFilter; //< Display-only filter (greyscale / edges / face crop), cycled with F.
+    ofImage filteredImg;     //< Reused texture for the filtered frame so it is not rebuilt every frame.
 
     ofxPanel gui;                                                 //< GUI panel containing all controls.
     ofxButton openImageButton;                                    //< Button to open an image file.

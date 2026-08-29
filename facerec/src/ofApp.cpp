@@ -34,6 +34,7 @@ constexpr int kOverlayUnknownB = 120;
 constexpr float kHudMarginLeft = 20.0f;
 constexpr float kHudFacesBottomOffset = 44.0f;
 constexpr float kHudInfoBottomOffset = 20.0f;
+constexpr float kHudFilterBottomOffset = 68.0f;
 constexpr int kWebcamWidth = 1280;
 constexpr int kWebcamHeight = 720;
 constexpr int kWebcamFps = 30;
@@ -513,8 +514,15 @@ void ofApp::draw()
     float offsetY = (ofGetHeight() - srcH * scale) / 2;
 
     drawSource(offsetX, offsetY, srcW, srcH, scale);
-    drawFaceOverlays(offsetX, offsetY, scale);
+    // FACE_CROP zooms the frame, so overlays drawn in original frame
+    // coordinates would land in the wrong place.
+    if (frameFilter.getMode() != FilterMode::FACE_CROP)
+    {
+        drawFaceOverlays(offsetX, offsetY, scale);
+    }
     drawHud();
+    ofDrawBitmapStringHighlight("Filter [F]: " + frameFilter.getModeName(), kHudMarginLeft,
+                                ofGetHeight() - kHudFilterBottomOffset);
 
     gui.draw();
 }
@@ -523,6 +531,31 @@ void ofApp::drawSource(float offsetX, float offsetY, float srcW, float srcH, flo
 {
     // Render whichever media source is currently active into the shared viewport.
     ofSetColor(255);
+
+    // FrameFilter (Modar): when a filter mode is active, draw the filtered copy
+    // instead of the raw source. Detection still runs on the original frame.
+    if (frameFilter.getMode() != FilterMode::NORMAL && !lastFrameBgr.empty())
+    {
+        std::vector<cv::Rect> faceRects;
+        for (int i = 0; i < (int)faces.size(); i++)
+        {
+            cv::Rect r;
+            r.x = (int)faces[i].box.x;
+            r.y = (int)faces[i].box.y;
+            r.width = (int)faces[i].box.width;
+            r.height = (int)faces[i].box.height;
+            faceRects.push_back(r);
+        }
+
+        cv::Mat filtered = frameFilter.apply(lastFrameBgr, faceRects);
+
+        // OpenCV gives BGR, openFrameworks wants RGB.
+        cv::Mat rgb;
+        cv::cvtColor(filtered, rgb, cv::COLOR_BGR2RGB);
+        filteredImg.setFromPixels(rgb.data, rgb.cols, rgb.rows, OF_IMAGE_COLOR);
+        filteredImg.draw(offsetX, offsetY, srcW * scale, srcH * scale);
+        return;
+    }
     if (mode == InputMode::Image)
     {
         image.draw(offsetX, offsetY, srcW * scale, srcH * scale);
@@ -656,6 +689,11 @@ void ofApp::keyPressed(int key)
         int count = static_cast<int>(webcamDevices.size());
         int next = (current + delta + count) % count;
         webcamDeviceIndex.set(next);
+    }
+    else if (key == 'f' || key == 'F')
+    {
+        frameFilter.nextMode();
+        ofLogNotice("facerec") << "filter mode: " << frameFilter.getModeName();
     }
 }
 
