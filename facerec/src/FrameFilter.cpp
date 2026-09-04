@@ -128,9 +128,43 @@ cv::Mat FrameFilter::applyFaceCrop(const cv::Mat& frame, vector<cv::Rect> faceRe
     padded.width = box.width + padX * 2;
     padded.height = box.height + padY * 2;
 
-    // the padding can push the box off the edge of the frame, this cuts it
-    // back so we never try to read pixels that arent there
-    padded = padded & cv::Rect(0, 0, frame.cols, frame.rows);
+    // the padded box comes out close to square but the frame is 16:9, so
+    // stretching it up to the full frame size squashes the face sideways.
+    // giving the box the same shape as the frame first makes the resize a
+    // clean zoom instead of a stretch.
+    float frameAspect = (float)frame.cols / (float)frame.rows;
+    float cropAspect = (float)padded.width / (float)padded.height;
+
+    if (cropAspect < frameAspect) {
+        // too narrow, widen it and keep the face in the middle
+        int wanted = (int)(padded.height * frameAspect);
+        padded.x = padded.x - (wanted - padded.width) / 2;
+        padded.width = wanted;
+    }
+    else if (cropAspect > frameAspect) {
+        // too wide, make it taller instead
+        int wanted = (int)(padded.width / frameAspect);
+        padded.y = padded.y - (wanted - padded.height) / 2;
+        padded.height = wanted;
+    }
+
+    // if it ended up bigger than the frame, shrink it back but keep the shape
+    if (padded.width > frame.cols) {
+        padded.width = frame.cols;
+        padded.height = (int)(frame.cols / frameAspect);
+    }
+    if (padded.height > frame.rows) {
+        padded.height = frame.rows;
+        padded.width = (int)(frame.rows * frameAspect);
+    }
+
+    // slide it back inside the frame instead of cutting it. cutting is what
+    // the old code did and it changes the shape again, which brings the
+    // stretch straight back
+    if (padded.x < 0) padded.x = 0;
+    if (padded.y < 0) padded.y = 0;
+    if (padded.x + padded.width > frame.cols) padded.x = frame.cols - padded.width;
+    if (padded.y + padded.height > frame.rows) padded.y = frame.rows - padded.height;
 
     if (padded.width <= 0 || padded.height <= 0) {
         return frame.clone();
