@@ -277,3 +277,31 @@ Output includes:
 - app data (models, gallery, samples): `facerec/bin/data/`
 - bootstrap script: `scripts/bootstrap.py`
 - build script: `scripts/build.py`
+
+---
+
+## 7) Further documentation
+
+Documentation added to the project: Windows setup, testing, and using the app.
+
+- [`MANUAL.md`](MANUAL.md): using the app. Control panel, keyboard shortcuts, the
+  two thresholds, tracking, liveness, the gallery, display filters and
+  command-line mode, with 21 figures and a troubleshooting table.
+- [`SETUP_WINDOWS.md`](SETUP_WINDOWS.md): building on Windows with MSYS2 MinGW64.
+  Package list, build steps, and the headless commands with the directory each
+  one runs from.
+- [`KNOWN_ISSUES.md`](KNOWN_ISSUES.md): what broke during setup and testing, with
+  the cause and the fix for each, plus the model limitations that are not
+  defects.
+- [`TESTING.md`](TESTING.md): 51 test scenarios across 9 categories, with steps
+  and expected results.
+- [`RESULTS.md`](RESULTS.md): the outcome of all 51, with the screenshots in
+  `test-evidence/`.
+- [`scripts/run_headless_tests.py`](scripts/run_headless_tests.py): runs the
+  headless subset and prints PASS or FAIL for each check.
+
+Run the headless tests from the repo root:
+
+```bash
+python3 scripts/run_headless_tests.py
+```
